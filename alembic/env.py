@@ -13,6 +13,11 @@ from app.models.architecture import Architecture
 from app.models.component import Component
 from app.models.connection import Connection
 from app.models.decision import ArchitectureDecision
+from app.models.api_design import APIDesign
+from app.models.database_design import DatabaseDesign
+from app.models.roadmap import Roadmap
+from app.models.clarification import Clarification
+from app.models.generation import Generation
 
 
 config = context.config
