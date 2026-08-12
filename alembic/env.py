@@ -8,6 +8,11 @@ from app.core.config import settings
 from app.db.base import Base
 from app.models.project import Project
 from app.models.requirement import Requirement
+from app.models.prd import PRD
+from app.models.architecture import Architecture
+from app.models.component import Component
+from app.models.connection import Connection
+from app.models.decision import ArchitectureDecision
 
 
 config = context.config
