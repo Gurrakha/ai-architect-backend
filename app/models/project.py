@@ -1,8 +1,19 @@
 from datetime import datetime, UTC
 from sqlalchemy import DateTime, Enum as SQLEnum, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 from enum import Enum
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.api_design import APIDesign
+    from app.models.architecture import Architecture
+    from app.models.database_design import DatabaseDesign
+    from app.models.generation import Generation
+    from app.models.prd import PRD
+    from app.models.requirement import Requirement
+    from app.models.roadmap import Roadmap
 
 
 
@@ -42,4 +53,39 @@ class Project(Base):
         nullable=False,
         default=datetime.now(UTC),
         onupdate=datetime.now(UTC)
+    )
+
+    requirements: Mapped[list["Requirement"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+    prds: Mapped[list["PRD"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+    architectures: Mapped[list["Architecture"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+    database_designs: Mapped[list["DatabaseDesign"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+    api_designs: Mapped[list["APIDesign"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+    roadmaps: Mapped[list["Roadmap"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+    generations: Mapped[list["Generation"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
     )

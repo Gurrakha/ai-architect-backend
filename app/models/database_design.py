@@ -2,9 +2,14 @@ from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.project import Project
 
 
 class DatabaseDesign(Base):
@@ -42,4 +47,8 @@ class DatabaseDesign(Base):
         nullable=False,
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
+    )
+
+    project: Mapped["Project"] = relationship(
+        back_populates="database_designs",
     )

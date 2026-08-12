@@ -2,9 +2,14 @@ from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.architecture import Architecture
 
 
 class ArchitectureDecision(Base):
@@ -46,4 +51,8 @@ class ArchitectureDecision(Base):
         DateTime,
         nullable=False,
         default=datetime.utcnow,
+    )
+
+    architecture: Mapped["Architecture"] = relationship(
+        back_populates="decisions",
     )

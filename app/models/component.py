@@ -1,9 +1,14 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.architecture import Architecture
 
 
 class Component(Base):
@@ -44,4 +49,8 @@ class Component(Base):
         DateTime,
         nullable=False,
         default=datetime.utcnow,
+    )
+
+    architecture: Mapped["Architecture"] = relationship(
+        back_populates="components",
     )

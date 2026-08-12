@@ -2,9 +2,15 @@ from datetime import datetime
 from enum import Enum
 
 from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.clarification import Clarification
+    from app.models.project import Project
 
 
 class GenerationStatus(str, Enum):
@@ -64,4 +70,13 @@ class Generation(Base):
         DateTime,
         nullable=False,
         default=datetime.utcnow,
+    )
+
+    project: Mapped["Project"] = relationship(
+        back_populates="generations",
+    )
+
+    clarifications: Mapped[list["Clarification"]] = relationship(
+        back_populates="generation",
+        cascade="all, delete-orphan",
     )

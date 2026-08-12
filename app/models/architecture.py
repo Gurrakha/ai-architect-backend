@@ -1,9 +1,17 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.project import Project
+    from app.models.component import Component
+    from app.models.connection import Connection
+    from app.models.decision import ArchitectureDecision
 
 
 class Architecture(Base):
@@ -41,4 +49,23 @@ class Architecture(Base):
         nullable=False,
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
+    )
+
+    project: Mapped["Project"] = relationship(
+        back_populates="architectures",
+    )
+
+    components: Mapped[list["Component"]] = relationship(
+        back_populates="architecture",
+        cascade="all, delete-orphan",
+    )
+
+    connections: Mapped[list["Connection"]] = relationship(
+        back_populates="architecture",
+        cascade="all, delete-orphan",
+    )
+
+    decisions: Mapped[list["ArchitectureDecision"]] = relationship(
+        back_populates="architecture",
+        cascade="all, delete-orphan",
     )

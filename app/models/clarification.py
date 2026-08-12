@@ -1,9 +1,14 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.generation import Generation
 
 
 class Clarification(Base):
@@ -45,4 +50,8 @@ class Clarification(Base):
     answered_at: Mapped[datetime | None] = mapped_column(
         DateTime,
         nullable=True,
+    )
+
+    generation: Mapped["Generation"] = relationship(
+        back_populates="clarifications",
     )
