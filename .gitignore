@@ -8,3 +8,5 @@ __pycache__/
 !.env.example
 .vscode/
 .idea/
+*.egg-info/
+alembic/__pycache__/
