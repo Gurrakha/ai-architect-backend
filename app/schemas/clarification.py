@@ -19,5 +19,6 @@ class ClarificationResponse(BaseModel):
     generation_id: int
     question: str
     answer: str | None
+    reason: str | None
     created_at: datetime
     answered_at: datetime | None
