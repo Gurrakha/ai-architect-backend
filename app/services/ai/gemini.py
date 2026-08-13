@@ -1,4 +1,5 @@
 from typing import TypeVar
+
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel
 
@@ -6,6 +7,7 @@ from app.core.config import settings
 from app.services.ai.provider import AIProvider
 
 T = TypeVar("T", bound=BaseModel)
+
 
 class GeminiProvider(AIProvider):
     """Gemini implementation of the AI provider."""
@@ -23,7 +25,8 @@ class GeminiProvider(AIProvider):
         output_schema: type[T],
     ) -> T:
         structured_model = self.model.with_structured_output(
-            output_schema
+            output_schema,
+            method="json_schema",
         )
 
         response = await structured_model.ainvoke(prompt)

@@ -3,6 +3,7 @@ from sqlalchemy import DateTime, Enum as SQLEnum, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 from enum import Enum
+from app.core.utils import utc_now
 
 from typing import TYPE_CHECKING
 
@@ -45,14 +46,14 @@ class Project(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.now(UTC),
+        default=utc_now,
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.now(UTC),
-        onupdate=datetime.now(UTC)
+        default=utc_now,
+        onupdate=utc_now
     )
 
     requirements: Mapped[list["Requirement"]] = relationship(

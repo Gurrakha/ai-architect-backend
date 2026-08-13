@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.core.utils import utc_now
 
 from app.db.base import Base
 
@@ -48,7 +49,7 @@ class Component(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
+        default=utc_now,
     )
 
     architecture: Mapped["Architecture"] = relationship(
