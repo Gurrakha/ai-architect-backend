@@ -109,6 +109,7 @@ class ClarificationService:
         self,
         project_id: int,
         clarification_id: int,
+        generation_id: int,
         answer: str,
     ) -> Clarification:
         clarification = self.db.get(
@@ -119,6 +120,7 @@ class ClarificationService:
         if (
             clarification is None
             or clarification.project_id != project_id
+            or clarification.generation_id != generation_id
         ):
             raise ValueError(
                 f"Clarification {clarification_id} not found"

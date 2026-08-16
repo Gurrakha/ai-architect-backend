@@ -19,3 +19,11 @@ class ProjectService:
         self.db.refresh(project)
 
         return project
+
+    def get_project_by_id(self, project_id: int) -> Project | None:
+            project = self.db.get(
+                Project,
+                project_id,
+            )
+    
+            return project

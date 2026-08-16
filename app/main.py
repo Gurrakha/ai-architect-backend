@@ -6,10 +6,10 @@ from app.api.routes.architecture import router as architecture_router
 from app.api.routes.database_design import router as database_design_router
 from app.api.routes.api_design import router as api_design_router
 from app.api.routes.roadmap import router as roadmap_router
+from app.api.routes.generation import router as generation_router
 
 from contextlib import asynccontextmanager
 from langgraph.checkpoint.postgres import PostgresSaver
-from app.services.generation.graph import build_generation_graph
 from app.core.config import settings
 
 @asynccontextmanager
@@ -19,9 +19,7 @@ async def lifespan(app: FastAPI):
     ) as checkpointer:
         checkpointer.setup()
 
-        app.state.generation_graph = build_generation_graph(
-            checkpointer,
-        )
+        app.state.checkpointer = checkpointer
 
         yield
 
@@ -37,6 +35,8 @@ app.include_router(architecture_router)
 app.include_router(database_design_router)
 app.include_router(api_design_router)
 app.include_router(roadmap_router)
+app.include_router(generation_router)
+
 
 @app.get("/health")
 async def health():

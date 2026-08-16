@@ -269,6 +269,7 @@ def test_answer_clarification(
 
     result = service.answer(
         project_id=1,
+        generation_id=1,
         clarification_id=1,
         answer="Only authenticated users.",
     )
@@ -338,6 +339,38 @@ def test_answer_clarification_not_found(
     ):
         service.answer(
             project_id=1,
+            generation_id=1,
             clarification_id=999,
             answer="Answer",
+        )
+
+def test_answer_clarification_wrong_generation(
+    db,
+    project,
+):
+    clarification = Clarification(
+        id=1,
+        project_id=1,
+        generation_id=2,
+        question="Who can create projects?",
+        reason="Authorization is required.",
+    )
+
+    db.project = project
+    db.clarifications.append(clarification)
+
+    service = ClarificationService(
+        db=db,
+        agent=FakeClarificationAgent(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Clarification 1 not found",
+    ):
+        service.answer(
+            project_id=1,
+            generation_id=1,
+            clarification_id=1,
+            answer="Only authenticated users.",
         )
