@@ -23,41 +23,49 @@ class DatabaseDesignService:
     async def generate(
         self,
         project_id: int,
+        requirements: dict | None = None,
+        prd: dict | None = None,
     ) -> DatabaseDesign:
         project = self.db.get(Project, project_id)
 
         if project is None:
             raise ValueError(f"Project {project_id} not found")
 
-        latest_requirement = self.db.scalar(
-            select(Requirement)
-            .where(Requirement.project_id == project_id)
-            .order_by(Requirement.version.desc())
-            .limit(1)
-        )
-
-        if latest_requirement is None:
-            raise ValueError(
-                f"No requirements found for project {project_id}"
+        if requirements is None:
+            latest_requirement = self.db.scalar(
+                select(Requirement)
+                .where(Requirement.project_id == project_id)
+                .order_by(Requirement.version.desc())
+                .limit(1)
             )
 
-        latest_prd = self.db.scalar(
-            select(PRD)
-            .where(PRD.project_id == project_id)
-            .order_by(PRD.version.desc())
-            .limit(1)
-        )
+            if latest_requirement is None:
+                raise ValueError(
+                    f"No requirements found for project {project_id}"
+                )
 
-        if latest_prd is None:
-            raise ValueError(
-                f"No PRD found for project {project_id}"
+            requirements = latest_requirement.content
+
+        if prd is None:
+            latest_prd = self.db.scalar(
+                select(PRD)
+                .where(PRD.project_id == project_id)
+                .order_by(PRD.version.desc())
+                .limit(1)
             )
+
+            if latest_prd is None:
+                raise ValueError(
+                    f"No PRD found for project {project_id}"
+                )
+
+            prd = latest_prd.content
 
         content: DatabaseDesignContent = await self.agent.generate(
             project_name=project.name,
             project_idea=project.idea,
-            requirements=latest_requirement.content,
-            prd=latest_prd.content,
+            requirements=requirements,
+            prd=prd,
         )
 
         latest_version = self.db.scalar(

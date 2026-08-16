@@ -1,4 +1,3 @@
-
 import pytest
 
 from app.models.clarification import Clarification
@@ -11,6 +10,12 @@ from app.services.clarification.service import ClarificationService
 
 
 class FakeClarificationAgent:
+    def __init__(self):
+        self.project_name = None
+        self.project_idea = None
+        self.requirements = None
+        self.prd = None
+
     async def generate(
         self,
         project_name: str,
@@ -18,6 +23,11 @@ class FakeClarificationAgent:
         requirements: dict,
         prd: dict,
     ) -> ClarificationGeneration:
+        self.project_name = project_name
+        self.project_idea = project_idea
+        self.requirements = requirements
+        self.prd = prd
+
         return ClarificationGeneration(
             needs_clarification=True,
             questions=[
@@ -166,8 +176,6 @@ async def test_generate_clarifications(
 ):
     db.project = project
     db.generations.append(generation)
-    db.requirements.append(requirements)
-    db.prds.append(prd)
 
     service = ClarificationService(
         db=db,
@@ -177,6 +185,8 @@ async def test_generate_clarifications(
     clarifications = await service.generate(
         project_id=1,
         generation_id=1,
+        requirements=requirements.content,
+        prd=prd.content,
     )
 
     assert len(clarifications) == 2
@@ -191,6 +201,11 @@ async def test_generate_clarifications(
         "Authorization requirements are needed "
         "for the architecture."
     )
+
+    assert agent.project_name == project.name
+    assert agent.project_idea == project.idea
+    assert agent.requirements == requirements.content
+    assert agent.prd == prd.content
 
 
 @pytest.mark.anyio
@@ -215,8 +230,6 @@ async def test_generate_clarifications_when_not_needed(
 
     db.project = project
     db.generations.append(generation)
-    db.requirements.append(requirements)
-    db.prds.append(prd)
 
     service = ClarificationService(
         db=db,
@@ -226,6 +239,8 @@ async def test_generate_clarifications_when_not_needed(
     clarifications = await service.generate(
         project_id=1,
         generation_id=1,
+        requirements=requirements.content,
+        prd=prd.content,
     )
 
     assert clarifications == []
@@ -279,6 +294,8 @@ async def test_generate_project_not_found(
         await service.generate(
             project_id=999,
             generation_id=1,
+            requirements={},
+            prd={},
         )
 
 
@@ -302,6 +319,8 @@ async def test_generate_generation_not_found(
         await service.generate(
             project_id=1,
             generation_id=999,
+            requirements={},
+            prd={},
         )
 
 
