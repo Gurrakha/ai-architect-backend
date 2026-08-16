@@ -1,10 +1,12 @@
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import interrupt
 
 from app.db.session import SessionLocal
 from app.services.ai.agents.api_design import APIDesignAgent
 from app.services.ai.agents.architecture import ArchitectureAgent
+from app.services.ai.agents.clarification import ClarificationAgent
 from app.services.ai.agents.database_design import DatabaseDesignAgent
 from app.services.ai.agents.prd import PRDAgent
 from app.services.ai.agents.requirements import RequirementsAgent
@@ -12,11 +14,13 @@ from app.services.ai.agents.roadmap import RoadmapAgent
 from app.services.ai.gemini import GeminiProvider
 from app.services.api_design.service import APIDesignService
 from app.services.architecture.service import ArchitectureService
+from app.services.clarification.service import ClarificationService
 from app.services.database_design.service import DatabaseDesignService
 from app.services.prd.service import PRDService
 from app.services.requirements.service import RequirementsService
 from app.services.roadmap.service import RoadmapService
-
+from langgraph.checkpoint.postgres import PostgresSaver
+ 
 
 class GenerationState(TypedDict):
     project_id: int
@@ -206,8 +210,80 @@ async def generate_roadmap(
     finally:
         db.close()
 
+async def generate_clarifications(
+    state: GenerationState,
+) -> dict:
+    db = SessionLocal()
 
-def build_generation_graph():
+    try:
+        provider = GeminiProvider()
+        agent = ClarificationAgent(provider)
+        service = ClarificationService(db, agent)
+
+        clarifications = await service.generate(
+            project_id=state["project_id"],
+            generation_id=state["generation_id"],
+            requirements=state["requirements"],
+            prd=state["prd"],
+        )
+
+        return {
+            "clarifications": [
+                {
+                    "id": clarification.id,
+                    "question": clarification.question,
+                    "reason": clarification.reason,
+                    "answer": clarification.answer,
+                }
+                for clarification in clarifications
+            ]
+        }
+
+    finally:
+        db.close()
+
+async def wait_for_clarifications(
+    state: GenerationState,
+) -> dict:
+    answers = interrupt(
+        {
+            "type": "clarification_required",
+            "clarifications": state["clarifications"],
+        }
+    )
+
+    answers_by_id = {
+        answer["id"]: answer["answer"]
+        for answer in answers
+    }
+
+    clarifications = [
+        {
+            **clarification,
+            "answer": answers_by_id.get(
+                clarification["id"],
+                clarification["answer"],
+            ),
+        }
+        for clarification in state["clarifications"]
+    ]
+
+    return {
+        "clarifications": clarifications,
+    }
+
+def route_after_clarification(
+    state: GenerationState,
+) -> str:
+    if state["clarifications"]:
+        return "clarification_wait"
+
+    return "architecture"
+
+
+def build_generation_graph(
+    checkpointer: PostgresSaver,
+):
     graph = StateGraph(GenerationState)
 
     graph.add_node(
@@ -218,6 +294,16 @@ def build_generation_graph():
     graph.add_node(
         "prd",
         generate_prd,
+    )
+
+    graph.add_node(
+        "clarification",
+        generate_clarifications,
+    )
+
+    graph.add_node(
+        "clarification_wait",
+        wait_for_clarifications,
     )
 
     graph.add_node(
@@ -252,6 +338,20 @@ def build_generation_graph():
 
     graph.add_edge(
         "prd",
+        "clarification",
+    )
+
+    graph.add_conditional_edges(
+        "clarification",
+        route_after_clarification,
+        {
+            "clarification_wait": "clarification_wait",
+            "architecture": "architecture",
+        },
+    )
+
+    graph.add_edge(
+        "clarification_wait",
         "architecture",
     )
 
@@ -265,7 +365,6 @@ def build_generation_graph():
         "api_design",
     )
 
-    
     graph.add_edge(
         "api_design",
         "roadmap",
@@ -276,4 +375,6 @@ def build_generation_graph():
         END,
     )
 
-    return graph.compile()
+    return graph.compile(
+        checkpointer=checkpointer,
+    )

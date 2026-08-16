@@ -7,6 +7,24 @@ from app.api.routes.database_design import router as database_design_router
 from app.api.routes.api_design import router as api_design_router
 from app.api.routes.roadmap import router as roadmap_router
 
+from contextlib import asynccontextmanager
+from langgraph.checkpoint.postgres import PostgresSaver
+from app.services.generation.graph import build_generation_graph
+from app.core.config import settings
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    with PostgresSaver.from_conn_string(
+        settings.DATABASE_URL,
+    ) as checkpointer:
+        checkpointer.setup()
+
+        app.state.generation_graph = build_generation_graph(
+            checkpointer,
+        )
+
+        yield
+
 app = FastAPI(
     title="AI Architect API",
     version="0.1.0",
