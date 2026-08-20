@@ -7,6 +7,7 @@ from app.api.routes.database_design import router as database_design_router
 from app.api.routes.api_design import router as api_design_router
 from app.api.routes.roadmap import router as roadmap_router
 from app.api.routes.generation import router as generation_router
+from app.api.routes.events import router as events_router
 
 from contextlib import asynccontextmanager
 from langgraph.checkpoint.postgres import PostgresSaver
@@ -36,6 +37,7 @@ app.include_router(database_design_router)
 app.include_router(api_design_router)
 app.include_router(roadmap_router)
 app.include_router(generation_router)
+app.include_router(events_router)
 
 
 @app.get("/health")

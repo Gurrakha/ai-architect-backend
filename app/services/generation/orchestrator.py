@@ -1,4 +1,5 @@
 from langgraph.types import Command
+from app.services.sse.manager import sse_manager
 
 from app.services.generation.graph import (
     GenerationState,
@@ -27,6 +28,17 @@ class GenerationOrchestrator:
     ) -> dict:
         self.generation_service.start(
             generation_id=generation_id,
+        )
+
+        await sse_manager.publish(
+            generation_id,
+            {
+                "event": "status",
+                "data": {
+                    "generation_id": generation_id,
+                    "status": "RUNNING",
+                },
+            },
         )
 
         graph = build_generation_graph(
@@ -64,10 +76,55 @@ class GenerationOrchestrator:
                     generation_id=generation_id,
                 )
 
+                await sse_manager.publish(
+                    generation_id,
+                    {
+                        "event": "status",
+                        "data": {
+                            "generation_id": generation_id,
+                            "status": "WAITING_FOR_INPUT",
+                        },
+                    },
+                )
+
+                interrupt = result["__interrupt__"][0]
+
+                await sse_manager.publish(
+                    generation_id,
+                    {
+                        "event": "clarification_required",
+                        "data": {
+                            "generation_id": generation_id,
+                            "clarifications": interrupt.value["clarifications"],
+                        },
+                    },
+                )
+
                 return result
 
             self.generation_service.complete(
                 generation_id=generation_id,
+            )
+
+            await sse_manager.publish(
+                generation_id,
+                {
+                    "event": "status",
+                    "data": {
+                        "generation_id": generation_id,
+                        "status": "COMPLETED",
+                    },
+                },
+            )
+
+            await sse_manager.publish(
+                generation_id,
+                {
+                    "event": "completed",
+                    "data": {
+                        "generation_id": generation_id,
+                    },
+                },
             )
 
             return result
@@ -76,6 +133,26 @@ class GenerationOrchestrator:
             self.generation_service.fail(
                 generation_id=generation_id,
                 error=str(exc),
+            )
+            await sse_manager.publish(
+                generation_id,
+                {
+                    "event": "status",
+                    "data": {
+                        "generation_id": generation_id,
+                        "status": "FAILED",
+                    },
+                },
+            )
+            await sse_manager.publish(
+                generation_id,
+                {
+                    "event": "failed",
+                    "data": {
+                        "generation_id": generation_id,
+                        "error": str(exc),
+                    },
+                },
             )
             raise
 
@@ -105,10 +182,43 @@ class GenerationOrchestrator:
                     generation_id=generation_id,
                 )
 
+                await sse_manager.publish(
+                    generation_id,
+                    {
+                        "event": "status",
+                        "data": {
+                            "generation_id": generation_id,
+                            "status": "WAITING_FOR_INPUT",
+                        },
+                    },
+                )
+
+
                 return result
 
             self.generation_service.complete(
                 generation_id=generation_id,
+            )
+
+            await sse_manager.publish(
+                generation_id,
+                {
+                    "event": "status",
+                    "data": {
+                        "generation_id": generation_id,
+                        "status": "COMPLETED",
+                    },
+                },
+            )
+
+            await sse_manager.publish(
+                generation_id,
+                {
+                    "event": "completed",
+                    "data": {
+                        "generation_id": generation_id,
+                    },
+                },
             )
 
             return result
@@ -117,5 +227,26 @@ class GenerationOrchestrator:
             self.generation_service.fail(
                 generation_id=generation_id,
                 error=str(exc),
+            )
+            await sse_manager.publish(
+                generation_id,
+                {
+                    "event": "status",
+                    "data": {
+                        "generation_id": generation_id,
+                        "status": "FAILED",
+                    },
+                },
+            )
+
+            await sse_manager.publish(
+                generation_id,
+                {
+                    "event": "failed",
+                    "data": {
+                        "generation_id": generation_id,
+                        "error": str(exc),
+                    },
+                },
             )
             raise

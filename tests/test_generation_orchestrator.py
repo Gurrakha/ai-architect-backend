@@ -33,9 +33,14 @@ async def test_run_generation():
         },
     )
 
+    sse_publish = AsyncMock()
+
     with patch(
         "app.services.generation.orchestrator.build_generation_graph",
         return_value=graph,
+    ), patch(
+        "app.services.generation.orchestrator.sse_manager.publish",
+        sse_publish,
     ):
         orchestrator = GenerationOrchestrator(
             generation_service=generation_service,
@@ -84,6 +89,38 @@ async def test_run_generation():
 
     generation_service.fail.assert_not_called()
 
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "status",
+            "data": {
+                "generation_id": 1,
+                "status": "RUNNING",
+            },
+        },
+    )
+
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "status",
+            "data": {
+                "generation_id": 1,
+                "status": "COMPLETED",
+            },
+        },
+    )
+
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "completed",
+            "data": {
+                "generation_id": 1,
+            },
+        },
+    )
+
     assert result["project_id"] == 1
     assert result["generation_id"] == 1
 
@@ -97,9 +134,14 @@ async def test_run_generation_marks_failed_on_error():
         side_effect=RuntimeError("Graph execution failed"),
     )
 
+    sse_publish = AsyncMock()
+
     with patch(
         "app.services.generation.orchestrator.build_generation_graph",
         return_value=graph,
+    ), patch(
+        "app.services.generation.orchestrator.sse_manager.publish",
+        sse_publish,
     ):
         orchestrator = GenerationOrchestrator(
             generation_service=generation_service,
@@ -130,6 +172,39 @@ async def test_run_generation_marks_failed_on_error():
         error="Graph execution failed",
     )
 
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "status",
+            "data": {
+                "generation_id": 1,
+                "status": "RUNNING",
+            },
+        },
+    )
+
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "status",
+            "data": {
+                "generation_id": 1,
+                "status": "FAILED",
+            },
+        },
+    )
+
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "failed",
+            "data": {
+                "generation_id": 1,
+                "error": "Graph execution failed",
+            },
+        },
+    )
+
 
 @pytest.mark.anyio
 async def test_run_generation_waits_for_clarification():
@@ -158,9 +233,14 @@ async def test_run_generation_waits_for_clarification():
         },
     )
 
+    sse_publish = AsyncMock()
+
     with patch(
         "app.services.generation.orchestrator.build_generation_graph",
         return_value=graph,
+    ), patch(
+        "app.services.generation.orchestrator.sse_manager.publish",
+        sse_publish,
     ):
         orchestrator = GenerationOrchestrator(
             generation_service=generation_service,
@@ -186,6 +266,48 @@ async def test_run_generation_waits_for_clarification():
 
     generation_service.complete.assert_not_called()
     generation_service.fail.assert_not_called()
+
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "status",
+            "data": {
+                "generation_id": 1,
+                "status": "RUNNING",
+            },
+        },
+    )
+
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "status",
+            "data": {
+                "generation_id": 1,
+                "status": "WAITING_FOR_INPUT",
+            },
+        },
+    )
+
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "clarification_required",
+            "data": {
+                "generation_id": 1,
+                "clarifications": [
+                    {
+                        "id": 1,
+                        "question": "Who can create projects?",
+                        "reason": (
+                            "Authorization requirements are needed."
+                        ),
+                        "answer": None,
+                    },
+                ],
+            },
+        },
+    )
 
     assert "__interrupt__" in result
 
@@ -215,9 +337,14 @@ async def test_resume_generation():
         },
     )
 
+    sse_publish = AsyncMock()
+
     with patch(
         "app.services.generation.orchestrator.build_generation_graph",
         return_value=graph,
+    ), patch(
+        "app.services.generation.orchestrator.sse_manager.publish",
+        sse_publish,
     ):
         orchestrator = GenerationOrchestrator(
             generation_service=generation_service,
@@ -258,6 +385,27 @@ async def test_resume_generation():
     generation_service.wait_for_input.assert_not_called()
     generation_service.fail.assert_not_called()
 
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "status",
+            "data": {
+                "generation_id": 1,
+                "status": "COMPLETED",
+            },
+        },
+    )
+
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "completed",
+            "data": {
+                "generation_id": 1,
+            },
+        },
+    )
+
     assert result["generation_id"] == 1
 
 
@@ -270,9 +418,14 @@ async def test_resume_generation_marks_failed_on_error():
         side_effect=RuntimeError("Resume failed"),
     )
 
+    sse_publish = AsyncMock()
+
     with patch(
         "app.services.generation.orchestrator.build_generation_graph",
         return_value=graph,
+    ), patch(
+        "app.services.generation.orchestrator.sse_manager.publish",
+        sse_publish,
     ):
         orchestrator = GenerationOrchestrator(
             generation_service=generation_service,
@@ -300,4 +453,26 @@ async def test_resume_generation_marks_failed_on_error():
     generation_service.fail.assert_called_once_with(
         generation_id=1,
         error="Resume failed",
+    )
+
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "status",
+            "data": {
+                "generation_id": 1,
+                "status": "FAILED",
+            },
+        },
+    )
+
+    sse_publish.assert_any_await(
+        1,
+        {
+            "event": "failed",
+            "data": {
+                "generation_id": 1,
+                "error": "Resume failed",
+            },
+        },
     )
