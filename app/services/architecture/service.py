@@ -28,6 +28,7 @@ class ArchitectureService:
         project_id: int,
         requirements: dict | None = None,
         prd: dict | None = None,
+        clarifications: list[dict] | None = None,
     ) -> Architecture:
         project = self.db.get(Project, project_id)
 
@@ -63,12 +64,16 @@ class ArchitectureService:
                 )
 
             prd = latest_prd.content
+        
+        if clarifications is None:
+            clarifications = []
 
         generated: ArchitectureGeneration = await self.agent.generate(
             project_name=project.name,
             project_idea=project.idea,
             requirements=requirements,
             prd=prd,
+            clarifications=clarifications
         )
 
         latest_version = self.db.scalar(

@@ -18,6 +18,7 @@ class FakeArchitectureAgent:
         project_idea: str,
         requirements: dict,
         prd: dict,
+        clarifications: list[dict],
     ) -> ArchitectureGeneration:
         return ArchitectureGeneration(
             overview="A modular web application architecture.",

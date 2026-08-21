@@ -25,6 +25,7 @@ class DatabaseDesignService:
         project_id: int,
         requirements: dict | None = None,
         prd: dict | None = None,
+        clarifications: list[dict] | None = None,
     ) -> DatabaseDesign:
         project = self.db.get(Project, project_id)
 
@@ -61,11 +62,15 @@ class DatabaseDesignService:
 
             prd = latest_prd.content
 
+        if clarifications is None:
+            clarifications = []
+
         content: DatabaseDesignContent = await self.agent.generate(
             project_name=project.name,
             project_idea=project.idea,
             requirements=requirements,
             prd=prd,
+            clarifications=clarifications,
         )
 
         latest_version = self.db.scalar(

@@ -15,6 +15,7 @@ class FakeDatabaseDesignAgent:
         project_idea: str,
         requirements: dict,
         prd: dict,
+        clarifications: list[dict],
     ) -> DatabaseDesignContent:
         return DatabaseDesignContent(
             tables=[

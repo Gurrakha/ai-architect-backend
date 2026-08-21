@@ -91,6 +91,12 @@ async def test_generate_api_design():
             "relationships": [],
             "indexes": [],
         },
+        clarifications=[
+            {
+                "question": "Who can create projects?",
+                "answer": "Only authenticated users.",
+            }
+        ]
     )
 
     assert isinstance(result, APIDesignContent)
@@ -106,3 +112,4 @@ async def test_generate_api_design():
     assert provider.output_schema is APIDesignContent
     assert "AI Architect" in provider.prompt
     assert "Users can create projects" in provider.prompt
+    assert "User-provided clarifications" in provider.prompt

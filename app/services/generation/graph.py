@@ -98,6 +98,7 @@ async def generate_architecture(
             project_id=state["project_id"],
             requirements=state["requirements"],
             prd=state["prd"],
+            clarifications=state["clarifications"],
         )
 
         return {
@@ -151,6 +152,7 @@ async def generate_database_design(
             project_id=state["project_id"],
             requirements=state["requirements"],
             prd=state["prd"],
+            clarifications=state["clarifications"],
         )
 
         return {
@@ -175,6 +177,7 @@ async def generate_api_design(
             requirements=state["requirements"],
             architecture=state["architecture"],
             database_design=state["database_design"],
+            clarifications=state["clarifications"],
         )
 
         return {
@@ -201,6 +204,7 @@ async def generate_roadmap(
             architecture=state["architecture"],
             database_design=state["database_design"],
             api_design=state["api_design"],
+            clarifications=state["clarifications"],
         )
 
         return {

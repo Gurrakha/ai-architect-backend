@@ -217,6 +217,7 @@ class FakeAPIDesignAgent:
         requirements: dict,
         architecture: dict,
         database_design: dict,
+        clarifications: list[dict],
     ) -> APIDesignContent:
         self.received = {
             "project_name": project_name,
@@ -224,6 +225,7 @@ class FakeAPIDesignAgent:
             "requirements": requirements,
             "architecture": architecture,
             "database_design": database_design,
+            "clarifications": clarifications,
         }
 
         return APIDesignContent(
@@ -330,6 +332,8 @@ async def test_generate_api_design_passes_required_context(
         agent.received["database_design"]
         == database_design.content
     )
+
+    assert agent.received["clarifications"] == []
 
 @pytest.mark.anyio
 async def test_generate_api_design_increments_version(

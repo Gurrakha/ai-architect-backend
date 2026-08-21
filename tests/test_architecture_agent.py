@@ -81,6 +81,12 @@ async def test_architecture_agent():
                 "Turn product ideas into technical plans."
             ),
         },
+        clarifications=[
+            {
+                "question": "Who can create projects?",
+                "answer": "Only authenticated users.",
+            }
+        ]
     )
 
     assert isinstance(result, ArchitectureGeneration)

@@ -13,6 +13,7 @@ class FakeProvider:
         assert "Project idea" in prompt
         assert "Previously generated requirements" in prompt
         assert "Previously generated PRD" in prompt
+        assert "User-provided clarifications" in prompt
         assert output_schema is DatabaseDesignContent
 
         return DatabaseDesignContent(
@@ -37,7 +38,8 @@ class FakeProvider:
 
 @pytest.mark.anyio
 async def test_database_design_agent():
-    agent = DatabaseDesignAgent(FakeProvider())
+    provider = FakeProvider()
+    agent = DatabaseDesignAgent(provider)
 
     result = await agent.generate(
         project_name="AI Architect",
@@ -54,6 +56,12 @@ async def test_database_design_agent():
             "title": "AI Architect",
             "features": ["Project creation"],
         },
+        clarifications=[
+            {
+                "question": "Who can create projects?",
+                "answer": "Only authenticated users.",
+            }
+        ]
     )
 
     assert isinstance(result, DatabaseDesignContent)

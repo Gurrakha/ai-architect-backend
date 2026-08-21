@@ -17,6 +17,7 @@ class RoadmapAgent:
         architecture: dict,
         database_design: dict,
         api_design: dict,
+        clarifications: list[dict],
     ) -> RoadmapContent:
         prompt = f"""
             You are a senior software engineering project planner.
@@ -45,6 +46,9 @@ class RoadmapAgent:
             API Design:
             {api_design}
 
+            User-provided clarifications:
+            {clarifications}
+
             Produce a practical implementation roadmap organized into
             logical development phases.
 
@@ -60,7 +64,11 @@ class RoadmapAgent:
 
             Important rules:
 
-            - Base the roadmap on the provided project artifacts.
+            - Base the roadmap primarily on the project idea,
+              requirements, PRD, architecture, database design,
+              API design, and user-provided clarifications.
+            - Treat answered clarifications as explicit user requirements
+              and account for them when prioritizing and sequencing roadmap work.
             - Order phases and tasks according to sensible implementation
               dependencies.
             - Do not invent highly specific requirements.

@@ -14,6 +14,7 @@ class DatabaseDesignAgent:
         project_idea: str,
         requirements: dict,
         prd: dict,
+        clarifications: list[dict]
     ) -> DatabaseDesignContent:
         prompt = f"""
             You are a senior database architect.
@@ -32,6 +33,9 @@ class DatabaseDesignAgent:
 
             Previously generated PRD:
             {prd}
+
+            User-provided clarifications:
+            {clarifications}
 
             Produce a structured database design containing:
 
@@ -62,8 +66,10 @@ class DatabaseDesignAgent:
 
             Important rules:
 
-            - Base the design primarily on the project idea, requirements,
-              and PRD.
+            - Base the database design primarily on the project idea,
+              requirements, PRD, architecture, and user-provided clarifications.
+            - Treat answered clarifications as explicit user requirements
+              and incorporate them into the database design where relevant.
             - Do not invent highly specific business requirements.
             - Avoid unnecessary tables or columns.
             - Use conventional relational database design principles.

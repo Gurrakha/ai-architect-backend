@@ -302,12 +302,14 @@ async def test_graph_nodes_update_state():
         project_id=1,
         requirements=generated_requirement.content,
         prd=generated_prd.content,
+        clarifications=[],
     )
 
     database_design_service.generate.assert_awaited_once_with(
         project_id=1,
         requirements=generated_requirement.content,
         prd=generated_prd.content,
+        clarifications=[],
     )
 
     api_design_service.generate.assert_awaited_once_with(
@@ -315,6 +317,7 @@ async def test_graph_nodes_update_state():
         requirements=generated_requirement.content,
         architecture=result["architecture"],
         database_design=generated_database_design.content,
+        clarifications=[],
     )
 
     roadmap_service.generate.assert_awaited_once_with(
@@ -324,6 +327,7 @@ async def test_graph_nodes_update_state():
         architecture=result["architecture"],
         database_design=generated_database_design.content,
         api_design=generated_api_design.content,
+        clarifications=[],
     )
 
 
@@ -602,4 +606,96 @@ async def test_graph_resumes_after_clarification():
         prd={
             "title": "Test PRD",
         },
+        clarifications=[
+            {
+                "id": 1,
+                "question": "Who can create projects?",
+                "reason": "Authorization requirements are needed.",
+                "answer": "Only authenticated users.",
+            }
+        ],
     )
+
+    database_design_service.generate.assert_awaited_once_with(
+        project_id=1,
+        requirements={
+            "functional_requirements": [],
+        },
+        prd={
+            "title": "Test PRD",
+        },
+        clarifications=[
+            {
+                "id": 1,
+                "question": "Who can create projects?",
+                "reason": "Authorization requirements are needed.",
+                "answer": "Only authenticated users.",
+            }
+        ],
+    )
+
+    api_design_service.generate.assert_awaited_once_with(
+        project_id=1,
+        requirements={
+            "functional_requirements": [],
+        },
+        architecture={
+            "overview": "Test architecture",
+            "components": [],
+            "connections": [],
+            "decisions": [],
+        },
+        database_design={
+            "tables": [],
+        },
+        clarifications=[
+            {
+                "id": 1,
+                "question": "Who can create projects?",
+                "reason": "Authorization requirements are needed.",
+                "answer": "Only authenticated users.",
+            }
+        ]
+    )
+
+    roadmap_service.generate.assert_awaited_once_with(
+        project_id=1,
+        requirements={
+            "functional_requirements": [],
+        },
+        prd={
+            "title": "Test PRD",
+        },
+        architecture={
+            "overview": "Test architecture",
+            "components": [],
+            "connections": [],
+            "decisions": [],
+        },
+        database_design={
+            "tables": [],
+        },
+        api_design={
+            "endpoints": [],
+        },
+        clarifications=[
+            {
+                "id": 1,
+                "question": "Who can create projects?",
+                "reason": "Authorization requirements are needed.",
+                "answer": "Only authenticated users.",
+            }
+        ]
+    )
+
+    assert result["database_design"] == {
+        "tables": [],
+    }
+
+    assert result["api_design"] == {
+        "endpoints": [],
+    }
+
+    assert result["roadmap"] == {
+        "phases": [],
+    }

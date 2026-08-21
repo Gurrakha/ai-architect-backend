@@ -14,6 +14,7 @@ class ArchitectureAgent:
         project_idea: str,
         requirements: dict,
         prd: dict,
+        clarifications: list[dict]
     ) -> ArchitectureGeneration:
         prompt = f"""
             You are a senior software architect.
@@ -31,6 +32,9 @@ class ArchitectureAgent:
 
             Previously generated PRD:
             {prd}
+
+            User-provided clarifications:
+            {clarifications}
 
             Produce a structured architecture containing:
 
@@ -72,7 +76,9 @@ class ArchitectureAgent:
             Important rules:
 
             - Base the architecture primarily on the project idea,
-              requirements, and PRD.
+              requirements, PRD, and user-provided clarifications.
+            - Treat answered clarifications as explicit user requirements
+              and incorporate them into the architecture where relevant.
             - Do not invent highly specific requirements.
             - Prefer simple, maintainable architecture.
             - Do not introduce unnecessary components.

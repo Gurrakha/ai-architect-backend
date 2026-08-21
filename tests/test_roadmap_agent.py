@@ -18,6 +18,7 @@ class FakeProvider:
         assert "System Architecture" in prompt
         assert "Database Design" in prompt
         assert "API Design" in prompt
+        assert "User-provided clarifications" in prompt
         assert output_schema is RoadmapContent
 
         return RoadmapContent(
@@ -89,6 +90,12 @@ async def test_roadmap_agent():
             ],
             "conventions": [],
         },
+        clarifications=[
+            {
+                "question": "Who can create projects?",
+                "answer": "Only authenticated users.",
+            }
+        ]
     )
 
     assert isinstance(result, RoadmapContent)

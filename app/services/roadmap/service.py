@@ -31,6 +31,7 @@ class RoadmapService:
         architecture: dict | None = None,
         database_design: dict | None = None,
         api_design: dict | None = None,
+        clarifications: list[dict] | None = None,
     ) -> Roadmap:
         project = self.db.get(Project, project_id)
 
@@ -149,6 +150,9 @@ class RoadmapService:
 
             api_design = latest_api_design.content
 
+        if clarifications is None:
+            clarifications = []
+
         generated: RoadmapContent = await self.agent.generate(
             project_name=project.name,
             project_idea=project.idea,
@@ -157,6 +161,7 @@ class RoadmapService:
             architecture=architecture,
             database_design=database_design,
             api_design=api_design,
+            clarifications=clarifications,
         )
 
         latest_version = self.db.scalar(

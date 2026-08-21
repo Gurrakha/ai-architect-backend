@@ -27,6 +27,7 @@ class APIDesignService:
         requirements: dict | None = None,
         architecture: dict | None = None,
         database_design: dict | None = None,
+        clarifications: list[dict] | None = None,
     ) -> APIDesign:
         project = self.db.get(Project, project_id)
 
@@ -107,12 +108,16 @@ class APIDesignService:
 
             database_design = latest_database_design.content
 
+        if clarifications is None:
+            clarifications = []
+
         content: APIDesignContent = await self.agent.generate(
             project_name=project.name,
             project_idea=project.idea,
             requirements=requirements,
             architecture=architecture,
             database_design=database_design,
+            clarifications=clarifications,
         )
 
         latest_version = self.db.scalar(

@@ -27,6 +27,7 @@ class FakeRoadmapAgent:
         architecture: dict,
         database_design: dict,
         api_design: dict,
+        clarifications: list[dict],
     ) -> RoadmapContent:
         self.received_architecture = architecture
 

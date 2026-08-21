@@ -15,6 +15,7 @@ class APIDesignAgent:
         requirements: dict,
         architecture: dict,
         database_design: dict,
+        clarifications: list[dict],
     ) -> APIDesignContent:
         prompt = f"""
             You are a senior backend architect and API designer.
@@ -35,6 +36,9 @@ class APIDesignAgent:
 
             Database design:
             {database_design}
+
+            User-provided clarifications:
+            {clarifications}
 
             Produce a structured API design containing:
 
@@ -63,6 +67,8 @@ class APIDesignAgent:
             Important rules:
 
             - Derive endpoints primarily from the requirements.
+            - Treat answered clarifications as explicit user requirements
+              and incorporate them into the API design where relevant.
             - Use the architecture to understand system boundaries and
               component interactions.
             - Use the database design to understand the data exposed or
