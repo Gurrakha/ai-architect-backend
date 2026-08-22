@@ -44,3 +44,29 @@ async def generate_roadmap(
             status_code=404,
             detail=str(exc),
         ) from exc
+
+@router.get(
+    "/latest",
+    response_model=RoadmapResponse,
+)
+async def get_latest_roadmap(
+    project_id: int,
+    service: RoadmapService = Depends(
+        get_roadmap_service,
+    ),
+) -> RoadmapResponse:
+    try:
+        roadmap = service.get_latest(project_id)
+
+        if roadmap is None:
+            raise ValueError(
+                f"No roadmap found for project {project_id}"
+            )
+
+        return roadmap
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc

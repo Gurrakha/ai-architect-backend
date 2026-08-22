@@ -44,3 +44,30 @@ async def generate_api_design(
             status_code=404,
             detail=str(exc),
         ) from exc
+
+
+@router.get(
+    "/latest",
+    response_model=APIDesignResponse,
+)
+async def get_latest_api_design(
+    project_id: int,
+    service: APIDesignService = Depends(
+        get_api_design_service,
+    ),
+) -> APIDesignResponse:
+    try:
+        api_design = service.get_latest(project_id)
+
+        if api_design is None:
+            raise ValueError(
+                f"No API design found for project {project_id}"
+            )
+
+        return api_design
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc

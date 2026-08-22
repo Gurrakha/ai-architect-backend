@@ -149,3 +149,11 @@ class ArchitectureService:
         self.db.refresh(architecture)
 
         return architecture
+
+    def get_latest(self, project_id: int) -> Architecture | None:
+        return self.db.scalar(
+            select(Architecture)
+            .where(Architecture.project_id == project_id)
+            .order_by(Architecture.version.desc())
+            .limit(1)
+        )

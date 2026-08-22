@@ -44,3 +44,30 @@ async def generate_requirements(
             status_code=404,
             detail=str(exc),
         ) from exc
+
+
+@router.get(
+    "/latest",
+    response_model=RequirementResponse,
+)
+async def get_latest_requirements(
+    project_id: int,
+    service: RequirementsService = Depends(
+        get_requirements_service,
+    ),
+) -> RequirementResponse:
+    try:
+        requirement = service.get_latest(project_id)
+
+        if requirement is None:
+            raise ValueError(
+                f"No requirements found for project {project_id}"
+            )
+
+        return requirement
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc

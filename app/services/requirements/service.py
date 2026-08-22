@@ -52,3 +52,11 @@ class RequirementsService:
         self.db.refresh(requirement)
 
         return requirement
+
+    def get_latest(self, project_id: int) -> Requirement | None:
+        return self.db.scalar(
+            select(Requirement)
+            .where(Requirement.project_id == project_id)
+            .order_by(Requirement.version.desc())
+            .limit(1)
+        )

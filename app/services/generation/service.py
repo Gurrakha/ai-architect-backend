@@ -1,3 +1,5 @@
+from sqlalchemy import select
+
 from app.core.utils import utc_now
 from app.models.generation import Generation, GenerationStatus
 from sqlalchemy.orm import Session
@@ -102,3 +104,28 @@ class GenerationService:
             )
 
         return generation
+
+    def get_by_id(
+        self,
+        project_id: int,
+        generation_id: int,
+    ) -> Generation | None:
+        return self.db.scalar(
+            select(Generation)
+            .where(
+                Generation.id == generation_id,
+                Generation.project_id == project_id,
+            )
+        )
+
+    def get_for_project(
+        self,
+        project_id: int,
+    ) -> list[Generation]:
+        return list(
+            self.db.scalars(
+                select(Generation)
+                .where(Generation.project_id == project_id)
+                .order_by(Generation.id.desc())
+            ).all()
+        )

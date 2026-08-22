@@ -149,3 +149,65 @@ async def answer_clarification(
             status_code=404,
             detail=str(exc),
         ) from exc
+
+
+@router.get(
+    "/{generation_id}",
+    response_model=GenerationResponse,
+)
+async def get_generation(
+    project_id: int,
+    generation_id: int,
+    generation_service: GenerationService = Depends(
+        get_generation_service,
+    ),
+) -> GenerationResponse:
+    generation = generation_service.get_by_id(
+        project_id=project_id,
+        generation_id=generation_id,
+    )
+
+    if generation is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Generation {generation_id} not found",
+        )
+
+    return generation
+
+
+@router.get(
+    "",
+    response_model=list[GenerationResponse],
+)
+async def get_generations(
+    project_id: int,
+    generation_service: GenerationService = Depends(
+        get_generation_service,
+    ),
+) -> list[GenerationResponse]:
+    return generation_service.get_for_project(project_id)
+
+
+@router.get(
+    "/{generation_id}/clarifications",
+    response_model=list[ClarificationResponse],
+)
+async def get_clarifications(
+    project_id: int,
+    generation_id: int,
+    clarification_service: ClarificationService = Depends(
+        get_clarification_service,
+    ),
+) -> list[ClarificationResponse]:
+    try:
+        return clarification_service.get_for_generation(
+            project_id=project_id,
+            generation_id=generation_id,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc

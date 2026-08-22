@@ -93,3 +93,11 @@ class DatabaseDesignService:
         self.db.refresh(database_design)
 
         return database_design
+
+    def get_latest(self, project_id: int) -> DatabaseDesign | None:
+        return self.db.scalar(
+            select(DatabaseDesign)
+            .where(DatabaseDesign.project_id == project_id)
+            .order_by(DatabaseDesign.version.desc())
+            .limit(1)
+        )

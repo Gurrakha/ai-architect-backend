@@ -140,3 +140,11 @@ class APIDesignService:
         self.db.refresh(api_design)
 
         return api_design
+
+    def get_latest(self, project_id: int) -> APIDesign | None:
+        return self.db.scalar(
+            select(APIDesign)
+            .where(APIDesign.project_id == project_id)
+            .order_by(APIDesign.version.desc())
+            .limit(1)
+        )

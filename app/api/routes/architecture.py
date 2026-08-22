@@ -44,3 +44,29 @@ async def generate_architecture(
             status_code=404,
             detail=str(exc),
         ) from exc
+
+@router.get(
+    "/latest",
+    response_model=ArchitectureResponse,
+)
+async def get_latest_architecture(
+    project_id: int,
+    service: ArchitectureService = Depends(
+        get_architecture_service,
+    ),
+) -> ArchitectureResponse:
+    try:
+        architecture = service.get_latest(project_id)
+
+        if architecture is None:
+            raise ValueError(
+                f"No architecture found for project {project_id}"
+            )
+
+        return architecture
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc

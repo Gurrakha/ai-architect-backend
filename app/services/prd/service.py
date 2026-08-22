@@ -72,3 +72,11 @@ class PRDService:
         self.db.refresh(prd)
 
         return prd
+
+    def get_latest(self, project_id: int) -> PRD | None:
+        return self.db.scalar(
+            select(PRD)
+            .where(PRD.project_id == project_id)
+            .order_by(PRD.version.desc())
+            .limit(1)
+        )

@@ -133,3 +133,20 @@ class ClarificationService:
         self.db.refresh(clarification)
 
         return clarification
+
+
+    def get_for_generation(
+        self,
+        project_id: int,
+        generation_id: int,
+    ) -> list[Clarification]:
+        return list(
+            self.db.scalars(
+                select(Clarification)
+                .where(
+                    Clarification.project_id == project_id,
+                    Clarification.generation_id == generation_id,
+                )
+                .order_by(Clarification.id)
+            ).all()
+        )

@@ -42,3 +42,28 @@ async def generate_prd(
             status_code=404,
             detail=str(exc),
         ) from exc
+
+
+@router.get(
+    "/latest",
+    response_model=PRDResponse,
+)
+async def get_latest_prd(
+    project_id: int,
+    service: PRDService = Depends(get_prd_service),
+) -> PRDResponse:
+    try:
+        prd = service.get_latest(project_id)
+
+        if prd is None:
+            raise ValueError(
+                f"No PRD found for project {project_id}"
+            )
+
+        return prd
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc

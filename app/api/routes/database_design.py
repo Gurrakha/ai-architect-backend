@@ -44,3 +44,30 @@ async def generate_database_design(
             status_code=404,
             detail=str(exc),
         ) from exc
+
+
+@router.get(
+    "/latest",
+    response_model=DatabaseDesignResponse,
+)
+async def get_latest_database_design(
+    project_id: int,
+    service: DatabaseDesignService = Depends(
+        get_database_design_service,
+    ),
+) -> DatabaseDesignResponse:
+    try:
+        database_design = service.get_latest(project_id)
+
+        if database_design is None:
+            raise ValueError(
+                f"No database design found for project {project_id}"
+            )
+
+        return database_design
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc

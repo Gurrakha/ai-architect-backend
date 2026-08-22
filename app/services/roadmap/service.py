@@ -184,3 +184,11 @@ class RoadmapService:
         self.db.refresh(roadmap)
 
         return roadmap
+
+    def get_latest(self, project_id: int) -> Roadmap | None:
+        return self.db.scalar(
+            select(Roadmap)
+            .where(Roadmap.project_id == project_id)
+            .order_by(Roadmap.version.desc())
+            .limit(1)
+        )
