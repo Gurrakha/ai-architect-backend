@@ -150,3 +150,51 @@ class ClarificationService:
                 .order_by(Clarification.id)
             ).all()
         )
+
+    def answer_many(
+        self,
+        project_id: int,
+        generation_id: int,
+        answers: list[dict],
+    ) -> list[Clarification]:
+        clarifications = list(
+            self.db.scalars(
+                select(Clarification)
+                .where(
+                    Clarification.project_id == project_id,
+                    Clarification.generation_id == generation_id,
+                )
+                .order_by(Clarification.id)
+            ).all()
+        )
+
+        clarification_by_id = {
+            clarification.id: clarification
+            for clarification in clarifications
+        }
+
+        for item in answers:
+            clarification_id = item["id"]
+            answer = item["answer"].strip()
+
+            if not answer:
+                raise ValueError(
+                    f"Answer for clarification {clarification_id} cannot be empty"
+                )
+
+            clarification = clarification_by_id.get(clarification_id)
+
+            if clarification is None:
+                raise ValueError(
+                    f"Clarification {clarification_id} not found"
+                )
+
+            clarification.answer = answer
+            clarification.answered_at = utc_now()
+
+        self.db.commit()
+
+        for clarification in clarifications:
+            self.db.refresh(clarification)
+
+        return clarifications

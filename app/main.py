@@ -10,15 +10,29 @@ from app.api.routes.generation import router as generation_router
 from app.api.routes.events import router as events_router
 
 from contextlib import asynccontextmanager
-from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from app.core.config import settings
+
+from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+import sys
+
+print("sys.platform=", sys.platform)
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(
+        asyncio.WindowsSelectorEventLoopPolicy()
+    )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    with PostgresSaver.from_conn_string(
-        settings.DATABASE_URL,
+    async with AsyncPostgresSaver.from_conn_string(
+        settings.DATABASE_URL.replace(
+            "postgresql+psycopg://",
+            "postgresql://",
+        ),
     ) as checkpointer:
-        checkpointer.setup()
+        await checkpointer.setup()
 
         app.state.checkpointer = checkpointer
 
@@ -27,6 +41,17 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AI Architect API",
     version="0.1.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(project_router)

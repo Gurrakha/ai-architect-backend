@@ -10,6 +10,14 @@ class ClarificationCreate(BaseModel):
 class ClarificationAnswer(BaseModel):
     answer: str = Field(min_length=1)
 
+class ClarificationAnswerItem(BaseModel):
+    id: int
+    answer: str = Field(min_length=1)
+
+
+class ClarificationAnswers(BaseModel):
+    answers: list[ClarificationAnswerItem] = Field(min_length=1)
+
 
 class ClarificationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

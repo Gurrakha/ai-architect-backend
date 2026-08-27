@@ -10,6 +10,7 @@ from app.services.projects.service import ProjectService
 from app.schemas.clarification import (
     ClarificationAnswer,
     ClarificationResponse,
+    ClarificationAnswers
 )
 from app.services.clarification.service import ClarificationService
 from app.services.ai.agents.clarification import ClarificationAgent
@@ -108,48 +109,94 @@ async def create_generation(
 
     return generation
 
+# @router.post(
+#     "/{generation_id}/clarifications/{clarification_id}",
+#     response_model=ClarificationResponse,
+# )
+# async def answer_clarification(
+#     project_id: int,
+#     generation_id: int,
+#     clarification_id: int,
+#     data: ClarificationAnswer,
+#     clarification_service: ClarificationService = Depends(
+#         get_clarification_service,
+#     ),
+#     orchestrator: GenerationOrchestrator = Depends(
+#         get_generation_orchestrator,
+#     ),
+# ) -> ClarificationResponse:
+#     try:
+#         clarification = clarification_service.answer(
+#             project_id=project_id,
+#             generation_id=generation_id,
+#             clarification_id=clarification_id,
+#             answer=data.answer,
+#         )
+
+#         await orchestrator.resume(
+#             generation_id=generation_id,
+#             answers=[
+#                 {
+#                     "id": clarification_id,
+#                     "answer": data.answer,
+#                 }
+#             ],
+#         )
+
+#         return clarification
+
+#     except ValueError as exc:
+#         raise HTTPException(
+#             status_code=404,
+#             detail=str(exc),
+#         ) from exc
+
 @router.post(
-    "/{generation_id}/clarifications/{clarification_id}",
-    response_model=ClarificationResponse,
+    "/{generation_id}/clarifications",
+    response_model=list[ClarificationResponse],
 )
-async def answer_clarification(
+async def answer_clarifications(
     project_id: int,
     generation_id: int,
-    clarification_id: int,
-    data: ClarificationAnswer,
+    data: ClarificationAnswers,
     clarification_service: ClarificationService = Depends(
         get_clarification_service,
     ),
     orchestrator: GenerationOrchestrator = Depends(
         get_generation_orchestrator,
     ),
-) -> ClarificationResponse:
+) -> list[ClarificationResponse]:
     try:
-        clarification = clarification_service.answer(
+        clarifications = clarification_service.answer_many(
             project_id=project_id,
             generation_id=generation_id,
-            clarification_id=clarification_id,
-            answer=data.answer,
+            answers=[
+                {
+                    "id": item.id,
+                    "answer": item.answer,
+                }
+                for item in data.answers
+            ],
         )
 
         await orchestrator.resume(
             generation_id=generation_id,
             answers=[
                 {
-                    "id": clarification_id,
-                    "answer": data.answer,
+                    "id": item.id,
+                    "answer": item.answer,
                 }
+                for item in data.answers
             ],
         )
 
-        return clarification
+        return clarifications
 
     except ValueError as exc:
         raise HTTPException(
             status_code=404,
             detail=str(exc),
         ) from exc
-
 
 @router.get(
     "/{generation_id}",

@@ -19,7 +19,15 @@ from app.services.database_design.service import DatabaseDesignService
 from app.services.prd.service import PRDService
 from app.services.requirements.service import RequirementsService
 from app.services.roadmap.service import RoadmapService
-from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from collections.abc import Awaitable, Callable
+from typing import Any
+
+from app.services.sse.stage_events import (
+    publish_stage_started,
+    publish_stage_completed,
+    publish_stage_failed,
+)
  
 
 class GenerationState(TypedDict):
@@ -286,7 +294,7 @@ def route_after_clarification(
 
 
 def build_generation_graph(
-    checkpointer: PostgresSaver,
+    checkpointer: AsyncPostgresSaver,
 ):
     graph = StateGraph(GenerationState)
 

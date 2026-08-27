@@ -5,7 +5,7 @@ description = "AI-powered software architecture design backend"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi",
-    "uvicorn[standard]",
+    "uvicorn[standard]==0.34.2",
     "sqlalchemy",
     "psycopg[binary]",
     "pydantic-settings",
