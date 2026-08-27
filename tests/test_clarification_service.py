@@ -93,6 +93,23 @@ class FakeDB:
             key=lambda obj: obj.version,
         )
 
+    def scalars(self, statement):
+        """
+        Minimal fake implementation for answer_many() and
+        get_for_generation().
+        """
+
+        class FakeScalarResult:
+            def __init__(self, records):
+                self.records = records
+
+            def all(self):
+                return self.records
+
+        # answer_many() and get_for_generation() both query
+        # clarifications filtered by project_id and generation_id.
+        return FakeScalarResult(self.clarifications)
+
     def add(self, obj):
         if isinstance(obj, Clarification):
             obj.id = len(self.clarifications) + 1
@@ -141,7 +158,9 @@ def requirements():
         version=1,
         content={
             "functional": ["Users can create projects"],
-            "non_functional": ["The system should be reliable"],
+            "non_functional": [
+                "The system should be reliable"
+            ],
             "constraints": ["Use PostgreSQL"],
         },
     )
@@ -163,6 +182,11 @@ def prd():
 @pytest.fixture
 def agent():
     return FakeClarificationAgent()
+
+
+# ---------------------------------------------------------------------------
+# Generate
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.anyio
@@ -200,6 +224,17 @@ async def test_generate_clarifications(
     assert first.reason == (
         "Authorization requirements are needed "
         "for the architecture."
+    )
+
+    second = clarifications[1]
+
+    assert second.id == 2
+    assert second.project_id == 1
+    assert second.generation_id == 1
+    assert second.question == "Should projects be private?"
+    assert second.reason == (
+        "Visibility affects authorization and "
+        "data-access design."
     )
 
     assert agent.project_name == project.name
@@ -245,37 +280,6 @@ async def test_generate_clarifications_when_not_needed(
 
     assert clarifications == []
     assert db.clarifications == []
-
-
-def test_answer_clarification(
-    db,
-    project,
-):
-    clarification = Clarification(
-        id=1,
-        project_id=1,
-        generation_id=1,
-        question="Who can create projects?",
-        reason="Authorization is required.",
-    )
-
-    db.project = project
-    db.clarifications.append(clarification)
-
-    service = ClarificationService(
-        db=db,
-        agent=FakeClarificationAgent(),
-    )
-
-    result = service.answer(
-        project_id=1,
-        generation_id=1,
-        clarification_id=1,
-        answer="Only authenticated users.",
-    )
-
-    assert result.answer == "Only authenticated users."
-    assert result.answered_at is not None
 
 
 @pytest.mark.anyio
@@ -325,6 +329,42 @@ async def test_generate_generation_not_found(
         )
 
 
+# ---------------------------------------------------------------------------
+# Answer single clarification
+# ---------------------------------------------------------------------------
+
+
+def test_answer_clarification(
+    db,
+    project,
+):
+    clarification = Clarification(
+        id=1,
+        project_id=1,
+        generation_id=1,
+        question="Who can create projects?",
+        reason="Authorization is required.",
+    )
+
+    db.project = project
+    db.clarifications.append(clarification)
+
+    service = ClarificationService(
+        db=db,
+        agent=FakeClarificationAgent(),
+    )
+
+    result = service.answer(
+        project_id=1,
+        generation_id=1,
+        clarification_id=1,
+        answer="Only authenticated users.",
+    )
+
+    assert result.answer == "Only authenticated users."
+    assert result.answered_at is not None
+
+
 def test_answer_clarification_not_found(
     db,
 ):
@@ -343,6 +383,7 @@ def test_answer_clarification_not_found(
             clarification_id=999,
             answer="Answer",
         )
+
 
 def test_answer_clarification_wrong_generation(
     db,
@@ -374,3 +415,242 @@ def test_answer_clarification_wrong_generation(
             clarification_id=1,
             answer="Only authenticated users.",
         )
+
+
+# ---------------------------------------------------------------------------
+# Answer multiple clarifications
+# ---------------------------------------------------------------------------
+
+
+def test_answer_many(
+    db,
+    project,
+):
+    clarifications = [
+        Clarification(
+            id=1,
+            project_id=1,
+            generation_id=1,
+            question="Who can create projects?",
+            reason="Authorization is required.",
+        ),
+        Clarification(
+            id=2,
+            project_id=1,
+            generation_id=1,
+            question="Should projects be private?",
+            reason="Visibility affects authorization.",
+        ),
+    ]
+
+    db.project = project
+    db.clarifications.extend(clarifications)
+
+    service = ClarificationService(
+        db=db,
+        agent=FakeClarificationAgent(),
+    )
+
+    result = service.answer_many(
+        project_id=1,
+        generation_id=1,
+        answers=[
+            {
+                "id": 1,
+                "answer": "Only authenticated users.",
+            },
+            {
+                "id": 2,
+                "answer": "Yes, projects should be private.",
+            },
+        ],
+    )
+
+    assert len(result) == 2
+
+    assert result[0].answer == (
+        "Only authenticated users."
+    )
+    assert result[0].answered_at is not None
+
+    assert result[1].answer == (
+        "Yes, projects should be private."
+    )
+    assert result[1].answered_at is not None
+
+
+def test_answer_many_strips_answers(
+    db,
+    project,
+):
+    clarification = Clarification(
+        id=1,
+        project_id=1,
+        generation_id=1,
+        question="Who can create projects?",
+        reason="Authorization is required.",
+    )
+
+    db.project = project
+    db.clarifications.append(clarification)
+
+    service = ClarificationService(
+        db=db,
+        agent=FakeClarificationAgent(),
+    )
+
+    result = service.answer_many(
+        project_id=1,
+        generation_id=1,
+        answers=[
+            {
+                "id": 1,
+                "answer": "  Only authenticated users.  ",
+            }
+        ],
+    )
+
+    assert result[0].answer == (
+        "Only authenticated users."
+    )
+
+
+def test_answer_many_rejects_empty_answer(
+    db,
+    project,
+):
+    clarification = Clarification(
+        id=1,
+        project_id=1,
+        generation_id=1,
+        question="Who can create projects?",
+        reason="Authorization is required.",
+    )
+
+    db.project = project
+    db.clarifications.append(clarification)
+
+    service = ClarificationService(
+        db=db,
+        agent=FakeClarificationAgent(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Answer for clarification 1 cannot be empty",
+    ):
+        service.answer_many(
+            project_id=1,
+            generation_id=1,
+            answers=[
+                {
+                    "id": 1,
+                    "answer": "   ",
+                }
+            ],
+        )
+
+
+def test_answer_many_clarification_not_found(
+    db,
+    project,
+):
+    db.project = project
+
+    service = ClarificationService(
+        db=db,
+        agent=FakeClarificationAgent(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Clarification 999 not found",
+    ):
+        service.answer_many(
+            project_id=1,
+            generation_id=1,
+            answers=[
+                {
+                    "id": 999,
+                    "answer": "Some answer.",
+                }
+            ],
+        )
+
+
+def test_answer_many_wrong_generation(
+    db,
+    project,
+):
+    clarification = Clarification(
+        id=1,
+        project_id=1,
+        generation_id=2,
+        question="Who can create projects?",
+        reason="Authorization is required.",
+    )
+
+    db.project = project
+    db.clarifications.append(clarification)
+
+    service = ClarificationService(
+        db=db,
+        agent=FakeClarificationAgent(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Clarification 999 not found",
+    ):
+        service.answer_many(
+            project_id=1,
+            generation_id=1,
+            answers=[
+                {
+                    "id": 999,
+                    "answer": "Some answer.",
+                }
+            ],
+        )
+
+
+# ---------------------------------------------------------------------------
+# Get clarifications
+# ---------------------------------------------------------------------------
+
+
+def test_get_for_generation(
+    db,
+    project,
+):
+    clarifications = [
+        Clarification(
+            id=1,
+            project_id=1,
+            generation_id=1,
+            question="Who can create projects?",
+            reason="Authorization is required.",
+        ),
+        Clarification(
+            id=2,
+            project_id=1,
+            generation_id=1,
+            question="Should projects be private?",
+            reason="Visibility affects authorization.",
+        ),
+    ]
+
+    db.project = project
+    db.clarifications.extend(clarifications)
+
+    service = ClarificationService(
+        db=db,
+        agent=FakeClarificationAgent(),
+    )
+
+    result = service.get_for_generation(
+        project_id=1,
+        generation_id=1,
+    )
+
+    assert result == clarifications

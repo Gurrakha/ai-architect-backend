@@ -42,11 +42,13 @@ def test_generation_state_shape():
     state = create_initial_state()
 
     assert state["project_id"] == 1
+    assert state["generation_id"] == 1
     assert state["requirements"] is None
     assert state["prd"] is None
     assert state["architecture"] is None
     assert state["database_design"] is None
     assert state["api_design"] is None
+    assert state["roadmap"] is None
     assert state["clarifications"] == []
 
 
@@ -220,6 +222,18 @@ async def test_graph_nodes_update_state():
             "app.services.generation.graph.RoadmapService",
             return_value=roadmap_service,
         ),
+        patch(
+            "app.services.generation.graph.publish_stage_started",
+            new_callable=AsyncMock,
+        ) as publish_stage_started,
+        patch(
+            "app.services.generation.graph.publish_stage_completed",
+            new_callable=AsyncMock,
+        ) as publish_stage_completed,
+        patch(
+            "app.services.generation.graph.publish_stage_failed",
+            new_callable=AsyncMock,
+        ) as publish_stage_failed,
     ):
         graph = build_generation_graph(
             checkpointer=create_checkpointer(),
@@ -330,6 +344,40 @@ async def test_graph_nodes_update_state():
         clarifications=[],
     )
 
+    assert publish_stage_started.await_count == 7
+    assert publish_stage_completed.await_count == 7
+    publish_stage_failed.assert_not_awaited()
+
+    started_stages = [
+        call.args[1]
+        for call in publish_stage_started.await_args_list
+    ]
+
+    completed_stages = [
+        call.args[1]
+        for call in publish_stage_completed.await_args_list
+    ]
+
+    assert started_stages == [
+        "requirements",
+        "prd",
+        "clarification",
+        "architecture",
+        "database_design",
+        "api_design",
+        "roadmap",
+    ]
+
+    assert completed_stages == [
+        "requirements",
+        "prd",
+        "clarification",
+        "architecture",
+        "database_design",
+        "api_design",
+        "roadmap",
+    ]
+
 
 @pytest.mark.anyio
 async def test_graph_interrupts_when_clarification_is_required():
@@ -375,6 +423,18 @@ async def test_graph_interrupts_when_clarification_is_required():
         patch(
             "app.services.generation.graph.ClarificationService",
             return_value=clarification_service,
+        ),
+        patch(
+            "app.services.generation.graph.publish_stage_started",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.services.generation.graph.publish_stage_completed",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.services.generation.graph.publish_stage_failed",
+            new_callable=AsyncMock,
         ),
     ):
         graph = build_generation_graph(
@@ -457,6 +517,12 @@ async def test_graph_resumes_after_clarification():
                 reason="Authorization requirements are needed.",
                 answer=None,
             ),
+            Mock(
+                id=2,
+                question="Should projects be private?",
+                reason="Visibility affects authorization.",
+                answer=None,
+            ),
         ],
     )
 
@@ -517,7 +583,6 @@ async def test_graph_resumes_after_clarification():
             "app.services.generation.graph.ArchitectureService",
             return_value=architecture_service,
         ),
-
         patch(
             "app.services.generation.graph.DatabaseDesignService",
             return_value=database_design_service,
@@ -529,6 +594,18 @@ async def test_graph_resumes_after_clarification():
         patch(
             "app.services.generation.graph.RoadmapService",
             return_value=roadmap_service,
+        ),
+        patch(
+            "app.services.generation.graph.publish_stage_started",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.services.generation.graph.publish_stage_completed",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.services.generation.graph.publish_stage_failed",
+            new_callable=AsyncMock,
         ),
     ):
         graph = build_generation_graph(
@@ -554,7 +631,11 @@ async def test_graph_resumes_after_clarification():
                     {
                         "id": 1,
                         "answer": "Only authenticated users.",
-                    }
+                    },
+                    {
+                        "id": 2,
+                        "answer": "Yes, projects should be private.",
+                    },
                 ]
             ),
             config=config,
@@ -566,7 +647,13 @@ async def test_graph_resumes_after_clarification():
             "question": "Who can create projects?",
             "reason": "Authorization requirements are needed.",
             "answer": "Only authenticated users.",
-        }
+        },
+        {
+            "id": 2,
+            "question": "Should projects be private?",
+            "reason": "Visibility affects authorization.",
+            "answer": "Yes, projects should be private.",
+        },
     ]
 
     assert result["architecture"] == {
@@ -612,7 +699,13 @@ async def test_graph_resumes_after_clarification():
                 "question": "Who can create projects?",
                 "reason": "Authorization requirements are needed.",
                 "answer": "Only authenticated users.",
-            }
+            },
+            {
+                "id": 2,
+                "question": "Should projects be private?",
+                "reason": "Visibility affects authorization.",
+                "answer": "Yes, projects should be private.",
+            },
         ],
     )
 
@@ -630,7 +723,13 @@ async def test_graph_resumes_after_clarification():
                 "question": "Who can create projects?",
                 "reason": "Authorization requirements are needed.",
                 "answer": "Only authenticated users.",
-            }
+            },
+            {
+                "id": 2,
+                "question": "Should projects be private?",
+                "reason": "Visibility affects authorization.",
+                "answer": "Yes, projects should be private.",
+            },
         ],
     )
 
@@ -654,8 +753,14 @@ async def test_graph_resumes_after_clarification():
                 "question": "Who can create projects?",
                 "reason": "Authorization requirements are needed.",
                 "answer": "Only authenticated users.",
-            }
-        ]
+            },
+            {
+                "id": 2,
+                "question": "Should projects be private?",
+                "reason": "Visibility affects authorization.",
+                "answer": "Yes, projects should be private.",
+            },
+        ],
     )
 
     roadmap_service.generate.assert_awaited_once_with(
@@ -684,8 +789,14 @@ async def test_graph_resumes_after_clarification():
                 "question": "Who can create projects?",
                 "reason": "Authorization requirements are needed.",
                 "answer": "Only authenticated users.",
-            }
-        ]
+            },
+            {
+                "id": 2,
+                "question": "Should projects be private?",
+                "reason": "Visibility affects authorization.",
+                "answer": "Yes, projects should be private.",
+            },
+        ],
     )
 
     assert result["database_design"] == {

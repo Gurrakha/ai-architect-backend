@@ -127,27 +127,40 @@ def test_create_generation_project_not_found():
 
     generation_service.create.assert_not_called()
 
-def test_answer_clarification():
+def test_answer_clarifications():
     clarification_service = Mock()
     orchestrator = Mock()
     orchestrator.resume = AsyncMock()
 
-    clarification = Clarification(
-        id=1,
-        project_id=1,
-        generation_id=1,
-        question="Who can create projects?",
-        reason="Authorization is required.",
-        answer="Only authenticated users.",
-        answered_at=utc_now(),
-        created_at=utc_now(),
-    )
+    clarifications = [
+        Clarification(
+            id=1,
+            project_id=1,
+            generation_id=1,
+            question="Who can create projects?",
+            reason="Authorization is required.",
+            answer="Only authenticated users.",
+            answered_at=utc_now(),
+            created_at=utc_now(),
+        ),
+        Clarification(
+            id=2,
+            project_id=1,
+            generation_id=1,
+            question="Should projects be private?",
+            reason="Visibility affects authorization.",
+            answer="Yes, projects should be private.",
+            answered_at=utc_now(),
+            created_at=utc_now(),
+        ),
+    ]
 
-    clarification_service.answer.return_value = clarification
+    clarification_service.answer_many.return_value = clarifications
 
     app.dependency_overrides[get_clarification_service] = (
         lambda: clarification_service
     )
+
     app.dependency_overrides[get_generation_orchestrator] = (
         lambda: orchestrator
     )
@@ -156,9 +169,18 @@ def test_answer_clarification():
         client = TestClient(app)
 
         response = client.post(
-            "/projects/1/generations/1/clarifications/1",
+            "/projects/1/generations/1/clarifications",
             json={
-                "answer": "Only authenticated users.",
+                "answers": [
+                    {
+                        "id": 1,
+                        "answer": "Only authenticated users.",
+                    },
+                    {
+                        "id": 2,
+                        "answer": "Yes, projects should be private.",
+                    },
+                ]
             },
         )
 
@@ -167,42 +189,65 @@ def test_answer_clarification():
 
     assert response.status_code == 200
 
-    assert response.json()["id"] == 1
-    assert response.json()["project_id"] == 1
-    assert response.json()["generation_id"] == 1
-    assert response.json()["question"] == "Who can create projects?"
-    assert response.json()["answer"] == "Only authenticated users."
+    body = response.json()
 
-    clarification_service.answer.assert_called_once_with(
+    assert len(body) == 2
+
+    assert body[0]["id"] == 1
+    assert body[0]["project_id"] == 1
+    assert body[0]["generation_id"] == 1
+    assert body[0]["question"] == "Who can create projects?"
+    assert body[0]["answer"] == "Only authenticated users."
+
+    assert body[1]["id"] == 2
+    assert body[1]["project_id"] == 1
+    assert body[1]["generation_id"] == 1
+    assert body[1]["question"] == "Should projects be private?"
+    assert body[1]["answer"] == "Yes, projects should be private."
+
+    clarification_service.answer_many.assert_called_once_with(
         project_id=1,
-        generation_id=1,
-        clarification_id=1,
-        answer="Only authenticated users.",
-    )
-
-    orchestrator.resume.assert_called_once_with(
         generation_id=1,
         answers=[
             {
                 "id": 1,
                 "answer": "Only authenticated users.",
-            }
+            },
+            {
+                "id": 2,
+                "answer": "Yes, projects should be private.",
+            },
+        ],
+    )
+
+    orchestrator.resume.assert_awaited_once_with(
+        generation_id=1,
+        answers=[
+            {
+                "id": 1,
+                "answer": "Only authenticated users.",
+            },
+            {
+                "id": 2,
+                "answer": "Yes, projects should be private.",
+            },
         ],
     )
 
 
-def test_answer_clarification_not_found():
+def test_answer_clarifications_not_found():
     clarification_service = Mock()
     orchestrator = Mock()
     orchestrator.resume = AsyncMock()
 
-    clarification_service.answer.side_effect = ValueError(
+    clarification_service.answer_many.side_effect = ValueError(
         "Clarification 999 not found"
     )
 
     app.dependency_overrides[get_clarification_service] = (
         lambda: clarification_service
     )
+
     app.dependency_overrides[get_generation_orchestrator] = (
         lambda: orchestrator
     )
@@ -211,9 +256,14 @@ def test_answer_clarification_not_found():
         client = TestClient(app)
 
         response = client.post(
-            "/projects/1/generations/1/clarifications/999",
+            "/projects/1/generations/1/clarifications",
             json={
-                "answer": "Only authenticated users.",
+                "answers": [
+                    {
+                        "id": 999,
+                        "answer": "Some answer",
+                    }
+                ]
             },
         )
 
@@ -226,11 +276,15 @@ def test_answer_clarification_not_found():
         "detail": "Clarification 999 not found",
     }
 
-    clarification_service.answer.assert_called_once_with(
+    clarification_service.answer_many.assert_called_once_with(
         project_id=1,
         generation_id=1,
-        clarification_id=999,
-        answer="Only authenticated users.",
+        answers=[
+            {
+                "id": 999,
+                "answer": "Some answer",
+            }
+        ],
     )
 
-    orchestrator.resume.assert_not_called()
+    orchestrator.resume.assert_not_awaited()

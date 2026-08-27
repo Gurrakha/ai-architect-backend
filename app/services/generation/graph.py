@@ -1,9 +1,12 @@
+from collections.abc import Awaitable, Callable
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from app.db.session import SessionLocal
+
 from app.services.ai.agents.api_design import APIDesignAgent
 from app.services.ai.agents.architecture import ArchitectureAgent
 from app.services.ai.agents.clarification import ClarificationAgent
@@ -12,6 +15,7 @@ from app.services.ai.agents.prd import PRDAgent
 from app.services.ai.agents.requirements import RequirementsAgent
 from app.services.ai.agents.roadmap import RoadmapAgent
 from app.services.ai.gemini import GeminiProvider
+
 from app.services.api_design.service import APIDesignService
 from app.services.architecture.service import ArchitectureService
 from app.services.clarification.service import ClarificationService
@@ -19,16 +23,14 @@ from app.services.database_design.service import DatabaseDesignService
 from app.services.prd.service import PRDService
 from app.services.requirements.service import RequirementsService
 from app.services.roadmap.service import RoadmapService
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from collections.abc import Awaitable, Callable
-from typing import Any
 
 from app.services.sse.stage_events import (
     publish_stage_started,
     publish_stage_completed,
     publish_stage_failed,
+    publish_stage_waiting,
 )
- 
+
 
 class GenerationState(TypedDict):
     project_id: int
@@ -47,7 +49,54 @@ class GenerationState(TypedDict):
     clarifications: list[dict]
 
 
-async def generate_requirements(
+# ---------------------------------------------------------------------------
+# Stage helper
+# ---------------------------------------------------------------------------
+
+
+async def run_stage(
+    state: GenerationState,
+    stage: str,
+    fn: Callable[[GenerationState], Awaitable[dict]],
+) -> dict:
+    """
+    Runs a normal generation stage and publishes its lifecycle over SSE.
+
+    The actual business logic remains inside the stage function.
+    """
+
+    generation_id = state["generation_id"]
+
+    await publish_stage_started(
+        generation_id,
+        stage,
+    )
+
+    try:
+        result = await fn(state)
+
+        await publish_stage_completed(
+            generation_id,
+            stage,
+        )
+
+        return result
+
+    except Exception as exc:
+        await publish_stage_failed(
+            generation_id,
+            stage,
+            str(exc),
+        )
+        raise
+
+
+# ---------------------------------------------------------------------------
+# Actual stage implementations
+# ---------------------------------------------------------------------------
+
+
+async def _generate_requirements(
     state: GenerationState,
 ) -> dict:
     db = SessionLocal()
@@ -69,7 +118,7 @@ async def generate_requirements(
         db.close()
 
 
-async def generate_prd(
+async def _generate_prd(
     state: GenerationState,
 ) -> dict:
     db = SessionLocal()
@@ -92,7 +141,7 @@ async def generate_prd(
         db.close()
 
 
-async def generate_architecture(
+async def _generate_architecture(
     state: GenerationState,
 ) -> dict:
     db = SessionLocal()
@@ -146,7 +195,7 @@ async def generate_architecture(
         db.close()
 
 
-async def generate_database_design(
+async def _generate_database_design(
     state: GenerationState,
 ) -> dict:
     db = SessionLocal()
@@ -170,7 +219,8 @@ async def generate_database_design(
     finally:
         db.close()
 
-async def generate_api_design(
+
+async def _generate_api_design(
     state: GenerationState,
 ) -> dict:
     db = SessionLocal()
@@ -195,7 +245,8 @@ async def generate_api_design(
     finally:
         db.close()
 
-async def generate_roadmap(
+
+async def _generate_roadmap(
     state: GenerationState,
 ) -> dict:
     db = SessionLocal()
@@ -222,7 +273,8 @@ async def generate_roadmap(
     finally:
         db.close()
 
-async def generate_clarifications(
+
+async def _generate_clarifications(
     state: GenerationState,
 ) -> dict:
     db = SessionLocal()
@@ -254,9 +306,92 @@ async def generate_clarifications(
     finally:
         db.close()
 
+
+# ---------------------------------------------------------------------------
+# Graph nodes
+# ---------------------------------------------------------------------------
+
+
+async def generate_requirements(
+    state: GenerationState,
+) -> dict:
+    return await run_stage(
+        state,
+        "requirements",
+        _generate_requirements,
+    )
+
+
+async def generate_prd(
+    state: GenerationState,
+) -> dict:
+    return await run_stage(
+        state,
+        "prd",
+        _generate_prd,
+    )
+
+
+async def generate_clarifications(
+    state: GenerationState,
+) -> dict:
+    return await run_stage(
+        state,
+        "clarification",
+        _generate_clarifications,
+    )
+
+
+async def generate_architecture(
+    state: GenerationState,
+) -> dict:
+    return await run_stage(
+        state,
+        "architecture",
+        _generate_architecture,
+    )
+
+
+async def generate_database_design(
+    state: GenerationState,
+) -> dict:
+    return await run_stage(
+        state,
+        "database_design",
+        _generate_database_design,
+    )
+
+
+async def generate_api_design(
+    state: GenerationState,
+) -> dict:
+    return await run_stage(
+        state,
+        "api_design",
+        _generate_api_design,
+    )
+
+
+async def generate_roadmap(
+    state: GenerationState,
+) -> dict:
+    return await run_stage(
+        state,
+        "roadmap",
+        _generate_roadmap,
+    )
+
+
 async def wait_for_clarifications(
     state: GenerationState,
 ) -> dict:
+    generation_id = state["generation_id"]
+
+    await publish_stage_waiting(
+        generation_id,
+        "clarification",
+    )
+
     answers = interrupt(
         {
             "type": "clarification_required",
@@ -280,9 +415,20 @@ async def wait_for_clarifications(
         for clarification in state["clarifications"]
     ]
 
+    await publish_stage_completed(
+        generation_id,
+        "clarification",
+    )
+
     return {
         "clarifications": clarifications,
     }
+
+
+# ---------------------------------------------------------------------------
+# Routing
+# ---------------------------------------------------------------------------
+
 
 def route_after_clarification(
     state: GenerationState,
@@ -291,6 +437,11 @@ def route_after_clarification(
         return "clarification_wait"
 
     return "architecture"
+
+
+# ---------------------------------------------------------------------------
+# Graph
+# ---------------------------------------------------------------------------
 
 
 def build_generation_graph(
