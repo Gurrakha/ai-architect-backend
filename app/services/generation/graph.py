@@ -53,29 +53,35 @@ class GenerationState(TypedDict):
 # Stage helper
 # ---------------------------------------------------------------------------
 
+async def safe_publish(
+    publisher: Callable[..., Awaitable[None]],
+    *args,
+) -> None:
+    try:
+        await publisher(*args)
+    except Exception as exc:
+        print(f"SSE notification failed: {exc}")
 
 async def run_stage(
     state: GenerationState,
     stage: str,
     fn: Callable[[GenerationState], Awaitable[dict]],
 ) -> dict:
-    """
-    Runs a normal generation stage and publishes its lifecycle over SSE.
-
-    The actual business logic remains inside the stage function.
-    """
-
     generation_id = state["generation_id"]
+    print(f"[Generation {generation_id}] Starting stage: {stage}")
 
-    await publish_stage_started(
+    await safe_publish(
+        publish_stage_started,
         generation_id,
         stage,
     )
 
     try:
         result = await fn(state)
+        print(f"[Generation {generation_id}] Completed stage: {stage}")
 
-        await publish_stage_completed(
+        await safe_publish(
+            publish_stage_completed,
             generation_id,
             stage,
         )
@@ -83,13 +89,16 @@ async def run_stage(
         return result
 
     except Exception as exc:
-        await publish_stage_failed(
+        print(
+            f"[Generation {generation_id}] Failed stage: {stage}: {exc}"
+        )
+        await safe_publish(
+            publish_stage_failed,
             generation_id,
             stage,
             str(exc),
         )
         raise
-
 
 # ---------------------------------------------------------------------------
 # Actual stage implementations

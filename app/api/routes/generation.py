@@ -15,6 +15,7 @@ from app.schemas.clarification import (
 from app.services.clarification.service import ClarificationService
 from app.services.ai.agents.clarification import ClarificationAgent
 from app.services.ai.gemini import GeminiProvider
+from app.core.config import settings
 
 def get_clarification_service(
     db: Session = Depends(get_db),
@@ -96,7 +97,7 @@ async def create_generation(
     generation = generation_service.create(
         project_id=project_id,
         workflow=data.workflow,
-        model=data.model,
+        model=settings.GEMINI_MODEL,
     )
 
     background_tasks.add_task(

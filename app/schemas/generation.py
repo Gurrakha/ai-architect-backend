@@ -7,7 +7,7 @@ from app.models.generation import GenerationStatus
 
 class GenerationCreate(BaseModel):
     workflow: str = Field(min_length=1, max_length=100)
-    model: str = Field(min_length=1, max_length=100)
+    # model: str = Field(min_length=1, max_length=100)
 
 
 class GenerationResponse(BaseModel):

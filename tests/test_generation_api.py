@@ -13,6 +13,7 @@ from app.api.routes.generation import (
 from app.models.generation import Generation, GenerationStatus
 from app.models.project import Project
 from app.models.clarification import Clarification
+from app.core.config import settings
 
 
 def test_create_generation():
@@ -30,9 +31,9 @@ def test_create_generation():
         id=1,
         project_id=1,
         workflow="full_generation",
-        model="gemini",
+        model=settings.GEMINI_MODEL,
         status=GenerationStatus.PENDING,
-        created_at= utc_now()
+        created_at=utc_now(),
     )
 
     project_service.get_project_by_id.return_value = project
@@ -55,7 +56,7 @@ def test_create_generation():
             "/projects/1/generations",
             json={
                 "workflow": "full_generation",
-                "model": "gemini",
+                # "model": "gemini",
             },
         )
 
@@ -67,7 +68,7 @@ def test_create_generation():
     assert response.json()["id"] == 1
     assert response.json()["project_id"] == 1
     assert response.json()["workflow"] == "full_generation"
-    assert response.json()["model"] == "gemini"
+    assert response.json()["model"] == settings.GEMINI_MODEL
     assert response.json()["status"] == "PENDING"
 
     project_service.get_project_by_id.assert_called_once_with(
@@ -77,7 +78,7 @@ def test_create_generation():
     generation_service.create.assert_called_once_with(
         project_id=1,
         workflow="full_generation",
-        model="gemini",
+        model=settings.GEMINI_MODEL,
     )
 
     orchestrator.run.assert_called_once_with(
@@ -113,7 +114,7 @@ def test_create_generation_project_not_found():
             "/projects/999/generations",
             json={
                 "workflow": "full_generation",
-                "model": "gemini",
+                # "model": "gemini",
             },
         )
 

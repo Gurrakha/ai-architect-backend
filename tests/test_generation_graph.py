@@ -9,6 +9,12 @@ from app.services.generation.graph import (
     build_generation_graph,
 )
 
+from app.services.generation.graph import (
+    GenerationState,
+    build_generation_graph,
+    safe_publish,
+)
+
 
 def create_initial_state() -> GenerationState:
     return {
@@ -810,3 +816,21 @@ async def test_graph_resumes_after_clarification():
     assert result["roadmap"] == {
         "phases": [],
     }
+
+
+@pytest.mark.anyio
+async def test_safe_publish_does_not_raise_when_publisher_fails():
+    publisher = AsyncMock(
+        side_effect=Exception("SSE connection failed")
+    )
+
+    await safe_publish(
+        publisher,
+        1,
+        "requirements",
+    )
+
+    publisher.assert_awaited_once_with(
+        1,
+        "requirements",
+    )

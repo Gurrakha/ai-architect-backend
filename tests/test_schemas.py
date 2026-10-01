@@ -48,11 +48,11 @@ from app.schemas.clarification import (
 def test_generation_create_schema():
     generation = GenerationCreate(
         workflow="full_generation",
-        model="gemini-2.5-flash",
+        # model="gemini-2.5-flash",
     )
 
     assert generation.workflow == "full_generation"
-    assert generation.model == "gemini-2.5-flash"
+    # assert generation.model == "gemini-2.5-flash"
 
 
 def test_generation_status():
