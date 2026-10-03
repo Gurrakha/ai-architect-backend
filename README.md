@@ -8,6 +8,15 @@ AI Architect is a personal full-stack project that explores how an AI-assisted w
 
 ---
 
+## Live Project
+Live Application:
+ https://ai-architect-frontend.vercel.app/
+
+Backend API Documentation:
+ https://ai-architect-backend-0wnf.onrender.com/docs
+
+---
+
 ## What It Generates
 
 | Stage | Output |
